@@ -1,0 +1,125 @@
+---
+# ============================================================
+# Fedora Cloud / Server Baseline Optimization and Service Cleanup
+# ============================================================
+
+- name: Verify target OS is Fedora
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Fedora'
+    fail_msg: "This baseline role is designed exclusively for Fedora OS."
+
+- name: Stop, disable and mask delay-inducing and redundant services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+    masked: true
+  loop:
+    - ModemManager.service
+    - NetworkManager-wait-online.service
+    - dnf-makecache.timer
+    - multipathd.service
+    - abrt-journal-core.service
+    - cockpit.socket
+    - cockpit.service
+    - geoclue.service
+  failed_when: false
+
+- name: Remove unnecessary packages and bloatware
+  ansible.builtin.dnf:
+    name:
+      - ModemManager
+      - plymouth
+      - geoclue2
+      - cockpit
+      - cockpit-bridge
+      - cockpit-system
+      - cockpit-ws
+      - PackageKit
+      - abrt
+    state: absent
+    autoremove: true
+  failed_when: false
+
+- name: Optimize DNF package manager configuration
+  ansible.builtin.ini_file:
+    path: /etc/dnf/dnf.conf
+    section: main
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    no_extra_spaces: true
+    mode: '0644'
+  loop:
+    - { option: "fastestmirror", value: "True" }
+    - { option: "max_parallel_downloads", value: "10" }
+    - { option: "countme", value: "False" }
+    - { option: "installonly_limit", value: "3" }
+
+- name: Ensure QEMU Guest Agent is installed and active
+  ansible.builtin.dnf:
+    name: qemu-guest-agent
+    state: present
+
+- name: Ensure QEMU Guest Agent service is enabled and started
+  ansible.builtin.systemd:
+    name: qemu-guest-agent
+    state: started
+    enabled: true
+
+# ============================================================
+# Root Disk Partition & Filesystem Expansion to Maximum
+# ============================================================
+
+- name: Ensure cloud-utils-growpart is installed for partition expansion
+  ansible.builtin.dnf:
+    name: cloud-utils-growpart
+    state: present
+
+- name: Retrieve root mount details from system facts
+  ansible.builtin.set_fact:
+    root_mount_info: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | first }}"
+
+- name: Extract parent disk, partition index, and filesystem type
+  ansible.builtin.set_fact:
+    root_parent_disk: "{{ root_mount_info.device | regex_replace('[0-9]+$', '') | regex_replace('p$', '') }}"
+    root_part_number: "{{ root_mount_info.device | regex_search('[0-9]+$') }}"
+    root_fstype: "{{ root_mount_info.fstype }}"
+
+- name: Expand root partition to 100% of underlying virtual disk
+  ansible.builtin.command: "growpart {{ root_parent_disk }} {{ root_part_number }}"
+  register: growpart_result
+  changed_when: "'CHANGED' in growpart_result.stdout"
+  failed_when: >
+    growpart_result.rc != 0 and
+    'NOCHANGE' not in growpart_result.stdout and
+    'no free space' not in growpart_result.stdout
+
+- name: Expand BTRFS filesystem to fill maximum partition capacity
+  ansible.builtin.command: "btrfs filesystem resize max /"
+  when: root_fstype == 'btrfs'
+  register: btrfs_resize_res
+  changed_when: "'Resize device' in btrfs_resize_res.stdout or btrfs_resize_res.rc == 0"
+
+- name: Expand XFS filesystem to fill maximum partition capacity
+  ansible.builtin.command: "xfs_growfs /"
+  when: root_fstype == 'xfs'
+  register: xfs_resize_res
+  changed_when: xfs_resize_res.rc == 0
+
+- name: Expand EXT4 filesystem to fill maximum partition capacity
+  ansible.builtin.command: "resize2fs {{ root_mount_info.device }}"
+  when: root_fstype in ['ext4', 'ext3']
+  register: ext4_resize_res
+  changed_when: ext4_resize_res.rc == 0
+
+- name: Refresh disk facts after expansion
+  ansible.builtin.setup:
+    gather_subset:
+      - mounts
+
+- name: Report expanded root filesystem size
+  ansible.builtin.debug:
+    msg: >-
+      Root filesystem on {{ root_mount_info.device }} ({{ root_fstype }})
+      is now {{ (ansible_mounts | selectattr('mount', 'equalto', '/') | first).size_total | filesizeformat }}

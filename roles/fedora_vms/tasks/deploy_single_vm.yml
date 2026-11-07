@@ -1,0 +1,81 @@
+---
+- name: "Check if VM {{ vm_item.name }} (ID: {{ vm_item.vmid }}) exists"
+  ansible.builtin.command: "qm status {{ vm_item.vmid }}"
+  register: vm_status_check
+  failed_when: false
+  changed_when: false
+
+- name: "Provision VM {{ vm_item.name }} (ID: {{ vm_item.vmid }}) from template"
+  when: vm_status_check.rc != 0
+  block:
+    - name: "Clone VM {{ vm_item.name }} from template {{ fedora_template_name }}"
+      ansible.builtin.command: >
+        qm clone {{ fedora_template_vmid }} {{ vm_item.vmid }}
+        --name {{ vm_item.name }}
+        --full 1
+        --storage {{ proxmox_storage_vms }}
+      changed_when: true
+
+    - name: "Configure CPU and Memory for {{ vm_item.name }}"
+      ansible.builtin.command: >
+        qm set {{ vm_item.vmid }}
+        --cores {{ vm_item.cores }}
+        --sockets {{ vm_item.sockets | default(1) }}
+        --memory {{ vm_item.memory }}
+      changed_when: true
+
+    - name: "Configure Cloud-Init user, SSH key and Network for {{ vm_item.name }}"
+      ansible.builtin.command: >
+        qm set {{ vm_item.vmid }}
+        --ciuser {{ fedora_default_user }}
+        --sshkeys /tmp/homelab_ssh_key.pub
+        --ipconfig0 ip={{ vm_item.ip }},gw={{ vm_item.gateway }}
+        --nameserver {{ vm_item.dns | default('1.1.1.1') }}
+        --searchdomain {{ homelab_domain }}
+        {% if vm_item.tags is defined %}--tags {{ vm_item.tags }}{% endif %}
+      changed_when: true
+
+    - name: "Set Cloud-Init user password for {{ vm_item.name }} if specified"
+      ansible.builtin.command: >
+        qm set {{ vm_item.vmid }}
+        --cipassword {{ fedora_default_password }}
+      when:
+        - fedora_default_password is defined
+        - fedora_default_password | length > 0
+      changed_when: true
+
+    - name: "Resize root disk for {{ vm_item.name }} to {{ vm_item.disk_size }}"
+      ansible.builtin.command: >
+        qm resize {{ vm_item.vmid }} scsi0 {{ vm_item.disk_size }}
+      changed_when: true
+
+    - name: "Start VM {{ vm_item.name }}"
+      ansible.builtin.command: "qm start {{ vm_item.vmid }}"
+      changed_when: true
+
+- name: "Ensure VM {{ vm_item.name }} is running if it already exists"
+  when:
+    - vm_status_check.rc == 0
+    - "'status: running' not in vm_status_check.stdout"
+  ansible.builtin.command: "qm start {{ vm_item.vmid }}"
+  changed_when: true
+
+- name: "Inspect configuration for existing VM {{ vm_item.name }}"
+  ansible.builtin.command: "qm config {{ vm_item.vmid }}"
+  register: qm_config_check
+  changed_when: false
+  when: vm_status_check.rc == 0
+
+- name: "Resize root disk on Proxmox for existing VM {{ vm_item.name }}"
+  ansible.builtin.command: >
+    qm disk resize {{ vm_item.vmid }} scsi0 {{ vm_item.disk_size }}
+  when:
+    - vm_status_check.rc == 0
+    - "'size=' ~ vm_item.disk_size not in qm_config_check.stdout"
+  register: qm_resize_result
+  failed_when:
+    - qm_resize_result.rc != 0
+    - "'not larger than current' not in qm_resize_result.stderr"
+  changed_when:
+    - qm_resize_result.rc == 0
+    - "'not larger than current' not in qm_resize_result.stderr"

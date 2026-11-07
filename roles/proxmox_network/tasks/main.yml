@@ -1,0 +1,80 @@
+---
+# ============================================================
+# Proxmox Internal Routed Network Configuration (WAN -> Proxmox -> VMs)
+# ============================================================
+
+- name: Ensure required networking packages are installed
+  ansible.builtin.apt:
+    name:
+      - iptables
+      - ifupdown2
+    state: present
+
+- name: Enable IPv4 forwarding in kernel via sysctl
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-homelab-forwarding.conf
+
+- name: Disable ICMP redirects for enhanced security
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.send_redirects
+    value: '0'
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-homelab-forwarding.conf
+
+- name: Configure internal bridge vmbr1 in /etc/network/interfaces
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: {{ proxmox_internal_bridge }} internal homelab bridge"
+    block: |
+      auto {{ proxmox_internal_bridge }}
+      iface {{ proxmox_internal_bridge }} inet static
+          address {{ proxmox_internal_gateway }}/{{ proxmox_internal_cidr | default('24') }}
+          bridge-ports none
+          bridge-stp off
+          bridge-fd 0
+          post-up echo 1 > /proc/sys/net/ipv4/ip_forward
+          post-up iptables -t nat -A POSTROUTING -s '{{ proxmox_internal_subnet }}' -o {{ proxmox_wan_interface }} -j MASQUERADE
+          post-down iptables -t nat -D POSTROUTING -s '{{ proxmox_internal_subnet }}' -o {{ proxmox_wan_interface }} -j MASQUERADE
+  notify: Reload network interfaces
+
+- name: Apply runtime iptables NAT masquerading rule
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ proxmox_internal_subnet }}"
+    out_interface: "{{ proxmox_wan_interface }}"
+    jump: MASQUERADE
+    comment: "Homelab internal VM NAT"
+    state: present
+
+- name: Apply runtime iptables FORWARD rule for outbound VM traffic
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ proxmox_internal_bridge }}"
+    out_interface: "{{ proxmox_wan_interface }}"
+    jump: ACCEPT
+    comment: "Allow internal VMs outbound to WAN"
+    state: present
+
+- name: Apply runtime iptables FORWARD rule for established inbound traffic
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ proxmox_wan_interface }}"
+    out_interface: "{{ proxmox_internal_bridge }}"
+    ctstate:
+      - ESTABLISHED
+      - RELATED
+    jump: ACCEPT
+    comment: "Allow established return traffic to internal VMs"
+    state: present
+
+- name: Bring up internal bridge interface if not active
+  ansible.builtin.command: "ifup {{ proxmox_internal_bridge }}"
+  register: bridge_ifup
+  failed_when: false
+  changed_when: bridge_ifup.rc == 0

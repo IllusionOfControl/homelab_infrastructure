@@ -1,0 +1,35 @@
+---
+- name: Install dnsmasq
+  ansible.builtin.apt:
+    name: dnsmasq
+    state: present
+    update_cache: false
+
+- name: Check if systemd-resolved service exists
+  ansible.builtin.systemd:
+    name: systemd-resolved
+  register: systemd_resolved_check
+  failed_when: false
+
+- name: Disable systemd-resolved DNS stub listener if active to free port 53
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: '^#?DNSStubListener='
+    line: 'DNSStubListener=no'
+  when: systemd_resolved_check.status is defined and systemd_resolved_check.status.ActiveState == 'active'
+  notify: Restart dnsmasq
+
+- name: Deploy dnsmasq homelab configuration
+  ansible.builtin.template:
+    src: homelab.conf.j2
+    dest: /etc/dnsmasq.d/homelab.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart dnsmasq
+
+- name: Ensure dnsmasq service is enabled and started
+  ansible.builtin.systemd:
+    name: dnsmasq
+    state: started
+    enabled: true

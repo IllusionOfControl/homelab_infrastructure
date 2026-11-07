@@ -1,0 +1,17 @@
+# Ansible artifacts
+*.retry
+.ansible/
+*.log
+
+# Sensitive vault password files
+.vault_pass
+.vault_password
+vault_pass.txt
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

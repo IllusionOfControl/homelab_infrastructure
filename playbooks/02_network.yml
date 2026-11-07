@@ -1,0 +1,11 @@
+---
+- name: Configure Proxmox Internal Routed Network (WAN -> Proxmox -> VMs)
+  hosts: proxmox
+  become: true
+  gather_facts: true
+  roles:
+    - role: proxmox_network
+      tags:
+        - network
+        - routing
+        - nat

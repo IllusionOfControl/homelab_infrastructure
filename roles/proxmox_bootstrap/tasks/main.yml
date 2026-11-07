@@ -1,0 +1,53 @@
+---
+- name: Ensure Proxmox VE host is Debian-based
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: "This role is intended only for Debian-based Proxmox VE."
+
+- name: Disable Proxmox Enterprise repository in /etc/apt/sources.list.d/pve-enterprise.list
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+    regexp: '^deb\s+https?://enterprise\.proxmox\.com/debian/pve'
+    replace: '# deb https://enterprise.proxmox.com/debian/pve'
+  when: ansible_check_mode or (ansible_facts['distribution_release'] is defined)
+  failed_when: false
+
+- name: Disable Ceph Enterprise repository if present
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list.d/ceph.list
+    regexp: '^deb\s+https?://enterprise\.proxmox\.com/debian/ceph'
+    replace: '# deb https://enterprise.proxmox.com/debian/ceph'
+  failed_when: false
+
+- name: Add Proxmox VE No-Subscription repository
+  ansible.builtin.deb822_repository:
+    name: pve-no-subscription
+    types: [deb]
+    uris: "http://download.proxmox.com/debian/pve"
+    suites: ["{{ ansible_distribution_release | default('bookworm') }}"]
+    components: [pve-no-subscription]
+    state: present
+
+- name: Install essential utility packages on Proxmox host
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - htop
+      - vim
+      - sudo
+      - ca-certificates
+      - gnupg
+      - libguestfs-tools
+      - dnsutils
+      - git
+    state: present
+
+- name: Disable Proxmox subscription nag popup in web UI
+  ansible.builtin.replace:
+    path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+    regexp: 'res === null \|\| res === undefined \|\| \!res \|\| res'
+    replace: 'false'
+    backup: true
+  failed_when: false

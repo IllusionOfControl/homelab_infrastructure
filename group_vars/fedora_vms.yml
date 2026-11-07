@@ -1,0 +1,10 @@
+---
+# ============================================================
+# Fedora Virtual Machines Group Variables
+# ============================================================
+
+# Target user configured by Cloud-Init
+ansible_user: "{{ fedora_default_user | default('devops') }}"
+
+# Seamless SSH access to internal 10.10.10.x VMs via Proxmox Host as a Bastion / ProxyJump
+ansible_ssh_common_args: "-o ProxyJump=root@{{ hostvars['pve']['ansible_host'] }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

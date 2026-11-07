@@ -1,0 +1,10 @@
+---
+- name: Proxmox VE Base Configuration
+  hosts: proxmox
+  become: true
+  gather_facts: true
+  roles:
+    - role: proxmox_bootstrap
+      tags:
+        - proxmox
+        - bootstrap

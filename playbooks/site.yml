@@ -1,0 +1,47 @@
+---
+# ============================================================
+# Homelab Infrastructure Master Orchestration Playbook
+# ============================================================
+
+- name: Stage 1 - Proxmox VE Host Bootstrap
+  ansible.builtin.import_playbook: 01_proxmox_base.yml
+  tags:
+    - proxmox
+    - bootstrap
+
+- name: Stage 2 - Internal Routed Network (WAN -> Proxmox -> VMs)
+  ansible.builtin.import_playbook: 02_network.yml
+  tags:
+    - network
+    - routing
+    - nat
+
+- name: Stage 3 - ZeroTier One Mesh VPN
+  ansible.builtin.import_playbook: 03_zerotier.yml
+  tags:
+    - zerotier
+    - vpn
+
+- name: Stage 4 - Caddy Reverse Proxy & Internal TLS
+  ansible.builtin.import_playbook: 04_caddy.yml
+  tags:
+    - caddy
+    - proxy
+
+- name: Stage 5 - Local DNS Service (dnsmasq)
+  ansible.builtin.import_playbook: 05_dns.yml
+  tags:
+    - dns
+
+- name: Stage 6 - Provision Fedora Cloud Virtual Machines
+  ansible.builtin.import_playbook: 06_fedora_vms.yml
+  tags:
+    - vms
+    - fedora
+
+- name: Stage 7 - Fedora Virtual Machines Baseline Optimization
+  ansible.builtin.import_playbook: 07_fedora_baseline.yml
+  tags:
+    - baseline
+    - fedora_baseline
+    - cleanup

@@ -1,0 +1,118 @@
+---
+# ============================================================
+# General Homelab Settings
+# ============================================================
+homelab_domain: "homelab.arpa"
+homelab_timezone: "UTC"
+
+# Public SSH key for injection into Proxmox and provisioned VMs
+homelab_ssh_public_key: "{{ lookup('file', '~/.ssh/id_ed25519.pub', errors='ignore') | default(lookup('file', '~/.ssh/id_rsa.pub', errors='ignore'), true) }}"
+
+# ============================================================
+# Network Architecture (WAN -> Proxmox -> VMs)
+# ============================================================
+# WAN interface on Proxmox connected to physical router / Internet
+proxmox_wan_interface: "vmbr0"
+
+# Isolated internal Linux bridge for private VM traffic routed via Proxmox
+proxmox_internal_bridge: "vmbr1"
+proxmox_internal_subnet: "10.10.10.0/24"
+proxmox_internal_gateway: "10.10.10.1"
+proxmox_internal_cidr: "24"
+
+# Default network bridge to assign to VM network adapters
+proxmox_network_bridge: "{{ proxmox_internal_bridge }}"
+
+# ============================================================
+# Proxmox VE Settings
+# ============================================================
+proxmox_node: "pve"
+proxmox_api_host: "{{ hostvars['pve']['ansible_host'] | default('127.0.0.1') }}"
+proxmox_api_user: "root@pam"
+proxmox_api_password: "change_me_password"
+proxmox_api_token_id: "change_me_token_id"
+proxmox_api_token_secret: "change_me_token_secret"
+proxmox_validate_certs: false
+
+# Storage pools in Proxmox
+proxmox_storage_vms: "local-lvm"    # Storage pool for VM root disks (e.g. local-lvm, local-zfs)
+proxmox_storage_iso: "local"        # Storage pool for ISO/qcow2 downloads and templates
+
+# ============================================================
+# ZeroTier Settings
+# ============================================================
+# 16-character hexadecimal ZeroTier Network ID
+zerotier_network_id: "change_me_network_id"
+zerotier_allow_global: false
+zerotier_allow_default: false
+zerotier_allow_dns: true
+
+# ============================================================
+# Caddy Reverse Proxy Settings
+# ============================================================
+caddy_admin_email: "admin@{{ homelab_domain }}"
+caddy_sites:
+  # Proxmox VE Web Management UI
+  - domain: "pve.{{ homelab_domain }}"
+    upstream: "https://127.0.0.1:8006"
+    tls: "internal"
+    transport_tls_insecure_skip_verify: true
+  # Inbound reverse proxy to internal VM service
+  - domain: "fedora-01.{{ homelab_domain }}"
+    upstream: "http://10.10.10.11:80"
+    tls: "internal"
+
+# ============================================================
+# DNS Settings (dnsmasq)
+# ============================================================
+dns_domain: "{{ homelab_domain }}"
+dns_upstream_servers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+
+# Static DNS A-records
+dns_records:
+  - name: "pve"
+    ip: "192.168.1.100"
+  - name: "gateway"
+    ip: "10.10.10.1"
+  - name: "caddy"
+    ip: "192.168.1.100"
+  - name: "fedora-vm-01"
+    ip: "10.10.10.11"
+  - name: "fedora-vm-02"
+    ip: "10.10.10.12"
+
+# ============================================================
+# Fedora Cloud Virtual Machines Settings
+# ============================================================
+fedora_template_vmid: 9000
+fedora_template_name: "fedora-cloud-template"
+fedora_cloud_image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/45/Server/x86_64/images/Fedora-Server-Guest-Generic-45-1.4.x86_64.qcow2"
+fedora_cloud_image_filename: "fedora-cloud-server-45.qcow2"
+
+fedora_default_user: "devops"
+fedora_default_password: "" # If empty, access is key-only via homelab_ssh_public_key
+
+# Virtual machines deployed on internal bridge vmbr1
+fedora_vms:
+  - vmid: 201
+    name: "fedora-vm-01"
+    cores: 2
+    sockets: 1
+    memory: 4096
+    disk_size: "20G"
+    ip: "10.10.10.11/24"
+    gateway: "10.10.10.1"
+    dns: "10.10.10.1"
+    tags: "homelab,fedora,dev"
+  - vmid: 202
+    name: "fedora-vm-02"
+    cores: 2
+    sockets: 1
+    memory: 4096
+    disk_size: "20G"
+    ip: "10.10.10.12/24"
+    gateway: "10.10.10.1"
+    dns: "10.10.10.1"
+    tags: "homelab,fedora,staging"

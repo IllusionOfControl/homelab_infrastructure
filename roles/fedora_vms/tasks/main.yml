@@ -1,0 +1,96 @@
+---
+# ==========================================
+# Downloading a Fedora Cloud Image and creating a template
+# ==========================================
+
+- name: Ensure Proxmox template ISO directory exists
+  ansible.builtin.file:
+    path: /var/lib/vz/template/iso
+    state: directory
+    mode: '0755'
+
+- name: Download Fedora Cloud Base qcow2 image
+  ansible.builtin.get_url:
+    url: "{{ fedora_cloud_image_url }}"
+    dest: "/var/lib/vz/template/iso/{{ fedora_cloud_image_filename }}"
+    mode: '0644'
+  register: fedora_image_download
+
+- name: Check if Fedora Cloud template VM already exists
+  ansible.builtin.command: "qm status {{ fedora_template_vmid }}"
+  register: template_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Fedora Cloud template if not present
+  when: template_check.rc != 0
+  block:
+    - name: Create base VM for Fedora template
+      ansible.builtin.command: >
+        qm create {{ fedora_template_vmid }}
+        --name {{ fedora_template_name }}
+        --memory 2048
+        --cores 2
+        --cpu host
+        --net0 virtio,bridge={{ proxmox_network_bridge }}
+      changed_when: true
+
+    - name: Import Fedora Cloud qcow2 disk to storage
+      ansible.builtin.command: >
+        qm importdisk {{ fedora_template_vmid }}
+        /var/lib/vz/template/iso/{{ fedora_cloud_image_filename }}
+        {{ proxmox_storage_vms }}
+      changed_when: true
+
+    - name: Configure SCSI controller and attach disk
+      ansible.builtin.command: >
+        qm set {{ fedora_template_vmid }}
+        --scsihw virtio-scsi-pci
+        --scsi0 {{ proxmox_storage_vms }}:vm-{{ fedora_template_vmid }}-disk-0,discard=on,ssd=1
+      changed_when: true
+
+    - name: Set boot drive to scsi0
+      ansible.builtin.command: >
+        qm set {{ fedora_template_vmid }}
+        --boot c
+        --bootdisk scsi0
+      changed_when: true
+
+    - name: Attach Cloud-Init drive
+      ansible.builtin.command: >
+        qm set {{ fedora_template_vmid }}
+        --ide2 {{ proxmox_storage_vms }}:cloudinit
+      changed_when: true
+
+    - name: Enable QEMU Guest Agent and serial console
+      ansible.builtin.command: >
+        qm set {{ fedora_template_vmid }}
+        --serial0 socket
+        --vga serial0
+        --agent enabled=1
+      changed_when: true
+
+    - name: Convert VM to Proxmox template
+      ansible.builtin.command: "qm template {{ fedora_template_vmid }}"
+      changed_when: true
+
+# ==========================================
+# Deploying Fedora Server Virtual Machines
+# ==========================================
+
+- name: Save homelab SSH public key to temporary file for cloud-init
+  ansible.builtin.copy:
+    content: "{{ homelab_ssh_public_key }}\n"
+    dest: /tmp/homelab_ssh_key.pub
+    mode: '0600'
+
+- name: Deploy Fedora Virtual Machines
+  ansible.builtin.include_tasks: deploy_single_vm.yml
+  loop: "{{ fedora_vms }}"
+  loop_control:
+    loop_var: vm_item
+
+- name: Remove temporary SSH key file
+  ansible.builtin.file:
+    path: /tmp/homelab_ssh_key.pub
+    state: absent

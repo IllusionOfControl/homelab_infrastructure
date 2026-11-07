@@ -1,0 +1,51 @@
+---
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /usr/share/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download and dearmor Caddy GPG signing key
+  ansible.builtin.shell:
+    cmd: >
+      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' |
+      gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+- name: Add Caddy official apt repository
+  ansible.builtin.deb822_repository:
+    name: caddy-stable
+    types: [deb]
+    uris: "https://dl.cloudsmith.io/public/caddy/stable/deb/debian"
+    suites: [any-version]
+    components: [main]
+    signed_by: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    state: present
+- name: Install Caddy package
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+
+- name: Ensure Caddy log directory exists
+  ansible.builtin.file:
+    path: /var/log/caddy
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: '0755'
+
+- name: Configure /etc/caddy/Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart caddy
+
+- name: Ensure Caddy service is enabled and started
+  ansible.builtin.systemd:
+    name: caddy
+    state: started
+    enabled: true

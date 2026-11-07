@@ -1,0 +1,10 @@
+---
+- name: Install and Configure ZeroTier
+  hosts: zerotier_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - role: zerotier
+      tags:
+        - zerotier
+        - vpn

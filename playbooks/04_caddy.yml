@@ -1,0 +1,10 @@
+---
+- name: Install and Configure Caddy Reverse Proxy
+  hosts: caddy_servers
+  become: true
+  gather_facts: true
+  roles:
+    - role: caddy
+      tags:
+        - caddy
+        - proxy

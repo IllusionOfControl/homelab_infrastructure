@@ -1,0 +1,57 @@
+---
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /usr/share/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download ZeroTier GPG signing key
+  ansible.builtin.shell:
+    cmd: >
+      curl -s 'https://raw.githubusercontent.com/zerotier/ZeroTierOne/master/doc/contact%40zerotier.com.gpg' |
+      gpg --dearmor --yes -o /usr/share/keyrings/zerotier-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/zerotier-keyring.gpg
+
+- name: Add ZeroTier official apt repository
+  ansible.builtin.deb822_repository:
+    name: zerotier
+    types: [deb]
+    uris: "http://download.zerotier.com/debian/{{ ansible_distribution_release | default('bookworm') }}"
+    suites: ["{{ ansible_distribution_release | default('bookworm') }}"]
+    components: [main]
+    signed_by: /usr/share/keyrings/zerotier-keyring.gpg
+    state: present
+- name: Install ZeroTier One package
+  ansible.builtin.apt:
+    name: zerotier-one
+    state: present
+
+- name: Ensure zerotier-one service is enabled and started
+  ansible.builtin.systemd:
+    name: zerotier-one
+    state: started
+    enabled: true
+
+- name: Manage ZeroTier network membership
+  when:
+    - zerotier_network_id is defined
+    - zerotier_network_id | length > 0
+  block:
+    - name: Check currently joined ZeroTier networks
+      ansible.builtin.command: zerotier-cli listnetworks
+      register: zt_networks
+      changed_when: false
+
+    - name: Join ZeroTier network
+      ansible.builtin.command: "zerotier-cli join {{ zerotier_network_id }}"
+      when: zerotier_network_id not in zt_networks.stdout
+      changed_when: true
+
+    - name: Configure ZeroTier network flags
+      ansible.builtin.command: >
+        zerotier-cli set {{ zerotier_network_id }}
+        allowGlobal={{ zerotier_allow_global | int }}
+        allowDefault={{ zerotier_allow_default | int }}
+        allowDNS={{ zerotier_allow_dns | int }}
+      changed_when: false

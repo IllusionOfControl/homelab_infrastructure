@@ -1,0 +1,9 @@
+---
+- name: Install and Configure Local DNS Server
+  hosts: dns_servers
+  become: true
+  gather_facts: true
+  roles:
+    - role: dns_server
+      tags:
+        - dns

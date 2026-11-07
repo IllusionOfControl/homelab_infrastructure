@@ -1,0 +1,35 @@
+# ==========================================
+# Homelab DNS Configuration (dnsmasq)
+# ==========================================
+
+# Basic security and performance settings
+domain-needed
+bogus-priv
+no-resolv
+no-poll
+no-hosts
+cache-size=1000
+
+# Homelab domain Zone
+domain={{ dns_domain }}
+local=/{{ dns_domain }}/
+expand-hosts
+
+# Listening interfaces
+listen-address=127.0.0.1
+listen-address={{ ansible_default_ipv4.address | default('0.0.0.0') }}
+{% if proxmox_internal_gateway is defined %}
+listen-address={{ proxmox_internal_gateway }}
+{% endif %}
+bind-interfaces
+
+# Upstream DNS servers
+{% for server in dns_upstream_servers %}
+server={{ server }}
+{% endfor %}
+
+# Local DNS records for Homelab devices and services
+{% for record in dns_records %}
+address=/{{ record.name }}.{{ dns_domain }}/{{ record.ip }}
+address=/{{ record.name }}/{{ record.ip }}
+{% endfor %}

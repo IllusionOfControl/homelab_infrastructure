@@ -1,0 +1,29 @@
+{
+  # Global Caddy Settings
+  email {{ caddy_admin_email }}
+  {% if caddy_sites | selectattr('tls', 'defined') | selectattr('tls', 'equalto', 'internal') | list | length > 0 %}
+  # Automatic internal CA (self-signed TLS certificates for *.home.arpa )
+  local_certs
+  {% endif %}
+}
+
+{% for site in caddy_sites %}
+{{ site.domain }} {
+  {% if site.tls | default('internal') == 'internal' %}
+  tls internal
+  {% endif %}
+
+  reverse_proxy {{ site.upstream }} {
+    {% if site.transport_tls_insecure_skip_verify | default(false) %}
+    transport http {
+      tls_insecure_skip_verify
+    }
+    {% endif %}
+  }
+
+  log {
+    output file /var/log/caddy/{{ site.domain }}.log
+  }
+}
+
+{% endfor %}
