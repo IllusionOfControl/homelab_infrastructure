@@ -116,3 +116,23 @@ fedora_vms:
     gateway: "10.10.10.1"
     dns: "10.10.10.1"
     tags: "homelab,fedora,staging"
+  - vmid: 203
+    name: "fedora-vm-03"
+    cores: 2
+    sockets: 1
+    memory: 4096
+    disk_size: "20G"
+    ip: "10.10.10.13/24"
+    gateway: "10.10.10.1"
+    dns: "10.10.10.1"
+    tags: "homelab,fedora"
+  - vmid: 204
+    name: "fedora-vm-04"
+    cores: 2
+    sockets: 1
+    memory: 4096
+    disk_size: "20G"
+    ip: "10.10.10.14/24"
+    gateway: "10.10.10.1"
+    dns: "10.10.10.1"
+    tags: "homelab,fedora"
