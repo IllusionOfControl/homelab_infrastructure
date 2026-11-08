@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   roles:
-    - role: fedora_baseline
+    - role: ../roles/fedora_baseline
       tags:
         - baseline
         - fedora_baseline

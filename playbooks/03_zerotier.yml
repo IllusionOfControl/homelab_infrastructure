@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   roles:
-    - role: zerotier
+    - role: ../roles/zerotier
       tags:
         - zerotier
         - vpn
