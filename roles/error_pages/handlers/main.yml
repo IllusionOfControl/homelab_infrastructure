@@ -1,0 +1,6 @@
+---
+- name: Restart error-pages
+  ansible.builtin.systemd:
+    name: error-pages
+    state: restarted
+    daemon_reload: true

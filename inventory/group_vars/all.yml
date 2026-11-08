@@ -62,6 +62,19 @@ caddy_sites:
     upstream: "http://10.10.10.11:80"
     tls: "internal"
 
+
+# ============================================================
+# tarampampam/error-pages Settings (Custom Error Placeholders)
+# ============================================================
+error_pages_enabled: true
+error_pages_version: "v4.2.7"
+error_pages_listen_addr: "127.0.0.1"
+error_pages_port: 8088
+# Available built-in themes:
+# app-down, cats, connection, ghost, hacker-terminal, l7, lost-in-space, noise, orient, shuffle, win98
+error_pages_template: "ghost"
+error_pages_show_details: true
+
 # ============================================================
 # DNS Settings (dnsmasq)
 # ============================================================

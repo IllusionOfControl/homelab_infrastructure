@@ -22,11 +22,13 @@
     - zerotier
     - vpn
 
-- name: Stage 4 - Caddy Reverse Proxy & Internal TLS
+- name: Stage 4 - Caddy Reverse Proxy & Error Pages Placeholder
   ansible.builtin.import_playbook: 04_caddy.yml
   tags:
     - caddy
     - proxy
+    - error_pages
+    - placeholder
 
 - name: Stage 5 - Local DNS Service (dnsmasq)
   ansible.builtin.import_playbook: 05_dns.yml

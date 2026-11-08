@@ -1,0 +1,23 @@
+[Unit]
+Description=tarampampam/error-pages HTTP Server for Homelab Placeholders
+After=network.target
+
+[Service]
+Type=simple
+User={{ error_pages_user }}
+Group={{ error_pages_group }}
+ExecStart=/usr/local/bin/error-pages \
+    --addr={{ error_pages_listen_addr }} \
+    --port={{ error_pages_port }} \
+    --template-name={{ error_pages_template }} \
+    {% if error_pages_show_details %}--show-details{% endif %} \
+    --send-same-http-code
+Restart=always
+RestartSec=3s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

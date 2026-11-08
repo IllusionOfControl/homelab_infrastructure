@@ -13,6 +13,14 @@
   tls internal
   {% endif %}
 
+  {% if error_pages_enabled | default(true) %}
+  # Custom error placeholder pages served by tarampampam/error-pages
+  handle_errors {
+    rewrite * /{err.status_code}.html
+    reverse_proxy 127.0.0.1:{{ error_pages_port | default(8088) }}
+  }
+  {% endif %}
+
   reverse_proxy {{ site.upstream }} {
     {% if site.transport_tls_insecure_skip_verify | default(false) %}
     transport http {

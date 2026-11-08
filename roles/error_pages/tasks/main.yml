@@ -1,0 +1,47 @@
+---
+# ============================================================
+# tarampampam/error-pages Installation & Service Setup
+# ============================================================
+
+- name: Ensure required compression tools are installed
+  ansible.builtin.apt:
+    name:
+      - tar
+      - gzip
+      - ca-certificates
+    state: present
+
+- name: Download and install error-pages binary
+  ansible.builtin.unarchive:
+    src: "https://github.com/tarampampam/error-pages/releases/download/{{ error_pages_version }}/error-pages-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: '0755'
+    owner: root
+    group: root
+  notify: Restart error-pages
+
+- name: Deploy error-pages systemd service unit
+  ansible.builtin.template:
+    src: error-pages.service.j2
+    dest: /etc/systemd/system/error-pages.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart error-pages
+
+- name: Ensure error-pages service is enabled and started
+  ansible.builtin.systemd:
+    name: error-pages
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Verify error-pages service is responding locally
+  ansible.builtin.uri:
+    url: "http://{{ error_pages_listen_addr }}:{{ error_pages_port }}/502.html"
+    status_code: [200, 502]
+  register: error_pages_health
+  retries: 5
+  delay: 1
+  until: error_pages_health.status in [200, 502]

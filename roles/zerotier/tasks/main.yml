@@ -33,6 +33,7 @@
     components: [main]
     signed_by: /usr/share/keyrings/zerotier-debian-package-key.gpg
     state: present
+
 - name: Install ZeroTier One package
   ansible.builtin.apt:
     name: zerotier-one

@@ -1,0 +1,11 @@
+---
+# ============================================================
+# Default variables for tarampampam/error-pages
+# ============================================================
+error_pages_version: "v4.2.7"
+error_pages_listen_addr: "127.0.0.1"
+error_pages_port: 8088
+error_pages_template: "ghost" # Options: app-down, cats, connection, ghost, hacker-terminal, l7, lost-in-space, noise, orient, shuffle, win98
+error_pages_show_details: true
+error_pages_user: "nobody"
+error_pages_group: "nogroup"
