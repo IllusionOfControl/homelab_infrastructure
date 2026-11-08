@@ -1,7 +1,7 @@
 ---
 - name: Provision Fedora Cloud Virtual Machines on Proxmox
   hosts: proxmox
-  become: true
+  become: false
   gather_facts: true
   roles:
     - role: ../roles/fedora_vms

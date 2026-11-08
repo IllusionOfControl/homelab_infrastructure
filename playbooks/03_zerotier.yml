@@ -1,7 +1,7 @@
 ---
 - name: Install and Configure ZeroTier
   hosts: zerotier_nodes
-  become: true
+  become: false
   gather_facts: true
   roles:
     - role: ../roles/zerotier

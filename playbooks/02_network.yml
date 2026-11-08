@@ -1,7 +1,7 @@
 ---
 - name: Configure Proxmox Internal Routed Network (WAN -> Proxmox -> VMs)
   hosts: proxmox
-  become: true
+  become: false
   gather_facts: true
   roles:
     - role: ../roles/proxmox_network

@@ -1,7 +1,7 @@
 ---
 - name: Proxmox VE Base Configuration
   hosts: proxmox
-  become: true
+  become: false
   gather_facts: true
   roles:
     - role: ../roles/proxmox_bootstrap
