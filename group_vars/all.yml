@@ -82,6 +82,10 @@ dns_records:
     ip: "10.10.10.11"
   - name: "fedora-vm-02"
     ip: "10.10.10.12"
+  - name: "fedora-vm-03"
+    ip: "10.10.10.13"
+  - name: "fedora-vm-04"
+    ip: "10.10.10.14"
 
 # ============================================================
 # Fedora Cloud Virtual Machines Settings
