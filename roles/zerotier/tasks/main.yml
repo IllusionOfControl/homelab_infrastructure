@@ -1,4 +1,15 @@
 ---
+# ============================================================
+# ZeroTier One VPN Daemon Installation & Network Membership
+# ============================================================
+- name: Remove conflicting legacy ZeroTier apt source files and keyrings
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/zerotier.list
+    - /usr/share/keyrings/zerotier-keyring.gpg
+
 - name: Ensure keyrings directory exists
   ansible.builtin.file:
     path: /usr/share/keyrings
@@ -9,18 +20,18 @@
   ansible.builtin.shell:
     cmd: >
       curl -s 'https://raw.githubusercontent.com/zerotier/ZeroTierOne/master/doc/contact%40zerotier.com.gpg' |
-      gpg --dearmor --yes -o /usr/share/keyrings/zerotier-keyring.gpg
+      gpg --dearmor --yes -o /usr/share/keyrings/zerotier-debian-package-key.gpg
   args:
-    creates: /usr/share/keyrings/zerotier-keyring.gpg
+    creates: /usr/share/keyrings/zerotier-debian-package-key.gpg
 
-- name: Add ZeroTier official apt repository
+- name: Configure ZeroTier official apt repository
   ansible.builtin.deb822_repository:
     name: zerotier
     types: [deb]
-    uris: "http://download.zerotier.com/debian/{{ ansible_distribution_release | default('bookworm') }}"
-    suites: ["{{ ansible_distribution_release | default('bookworm') }}"]
+    uris: "http://download.zerotier.com/debian/{{ ansible_facts['distribution_release'] | default('trixie') }}"
+    suites: ["{{ ansible_facts['distribution_release'] | default('trixie') }}"]
     components: [main]
-    signed_by: /usr/share/keyrings/zerotier-keyring.gpg
+    signed_by: /usr/share/keyrings/zerotier-debian-package-key.gpg
     state: present
 - name: Install ZeroTier One package
   ansible.builtin.apt:
@@ -37,6 +48,7 @@
   when:
     - zerotier_network_id is defined
     - zerotier_network_id | length > 0
+    - zerotier_network_id != 'change_me_network_id'
   block:
     - name: Check currently joined ZeroTier networks
       ansible.builtin.command: zerotier-cli listnetworks

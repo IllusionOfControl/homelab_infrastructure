@@ -20,6 +20,11 @@
     replace: '# deb https://enterprise.proxmox.com/debian/ceph'
   failed_when: false
 
+- name: Remove legacy one-line pve-no-subscription.list to avoid duplicate sources
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-no-subscription.list
+    state: absent
+
 - name: Add Proxmox VE No-Subscription repository
   ansible.builtin.deb822_repository:
     name: pve-no-subscription
