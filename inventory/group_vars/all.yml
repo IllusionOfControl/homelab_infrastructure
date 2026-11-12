@@ -87,11 +87,11 @@ dns_upstream_servers:
 # Static DNS A-records
 dns_records:
   - name: "pve"
-    ip: "192.168.1.100"
+    ip: "{{ hostvars['pve']['ansible_host'] | default('10.147.17.126') }}"
   - name: "gateway"
     ip: "10.10.10.1"
-  - name: "caddy"
-    ip: "192.168.1.100"
+  - name: "fedora-01"
+    ip: "{{ hostvars['pve']['ansible_host'] | default('10.147.17.126') }}"
   - name: "fedora-vm-01"
     ip: "10.10.10.11"
   - name: "fedora-vm-02"

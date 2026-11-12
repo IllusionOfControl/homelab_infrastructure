@@ -16,12 +16,26 @@ local=/{{ dns_domain }}/
 expand-hosts
 
 # Listening interfaces
-listen-address=127.0.0.1
-listen-address={{ ansible_default_ipv4.address | default('0.0.0.0') }}
-{% if proxmox_internal_gateway is defined %}
-listen-address={{ proxmox_internal_gateway }}
+{% set dns_listen_ips = ['127.0.0.1'] %}
+{% if ansible_default_ipv4.address is defined and ansible_default_ipv4.address not in dns_listen_ips %}
+{% set _ = dns_listen_ips.append(ansible_default_ipv4.address) %}
 {% endif %}
-bind-interfaces
+{% if proxmox_internal_gateway is defined and proxmox_internal_gateway not in dns_listen_ips %}
+{% set _ = dns_listen_ips.append(proxmox_internal_gateway) %}
+{% endif %}
+{% if hostvars[inventory_hostname]['ansible_host'] is defined and hostvars[inventory_hostname]['ansible_host'] is match('^\\d+\\.\\d+\\.\\d+\\.\\d+$') and hostvars[inventory_hostname]['ansible_host'] not in dns_listen_ips %}
+{% set _ = dns_listen_ips.append(hostvars[inventory_hostname]['ansible_host']) %}
+{% endif %}
+{% for iface in ansible_facts['interfaces'] | default([]) if iface is match('^zt') %}
+{% set zt_ip = (ansible_facts[iface]['ipv4']['address'] | default('')) if (ansible_facts[iface] is defined and ansible_facts[iface]['ipv4'] is defined) else '' %}
+{% if zt_ip and zt_ip not in dns_listen_ips %}
+{% set _ = dns_listen_ips.append(zt_ip) %}
+{% endif %}
+{% endfor %}
+{% for ip in dns_listen_ips %}
+listen-address={{ ip }}
+{% endfor %}
+bind-dynamic
 
 # Upstream DNS servers
 {% for server in dns_upstream_servers %}
