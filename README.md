@@ -6,9 +6,9 @@ Declarative homelab automation on **Proxmox Virtual Environment (PVE)** managed 
 - **Proxmox Bootstrap**: Disables enterprise repositories, configures `pve-no-subscription`, suppresses web UI subscription nag, installs essential server utilities.
 - **Internal Routed Network (WAN -> Proxmox -> VMs)**: Creates a dedicated isolated internal bridge (`vmbr1`, `10.10.10.0/24`), enables kernel IPv4 forwarding, and configures NAT masquerading so Proxmox acts as the default gateway for internal VMs.
 - **ZeroTier One**: Automated installation of the ZeroTier One daemon and network joining for secure remote mesh access.
-- **Caddy Reverse Proxy**: Automatic internal TLS management (`local_certs` / `tls internal`) reverse-proxying `*.home.arpa` domains to the Proxmox Web UI and internal VM services.
+- **Caddy Reverse Proxy**: Automatic internal TLS management (`local_certs` / `tls internal`) reverse-proxying `*.homelab` domains to the Proxmox Web UI and internal VM services.
 - **Custom Error Pages (tarampampam/error-pages)**: Fast, lightweight Go daemon serving beautiful custom HTTP placeholder pages (502/503/504) via Caddy when backend VMs or services are offline.
-- **DNS (dnsmasq)**: Local caching DNS resolver listening on loopback, WAN, and internal bridge interfaces, providing local resolution for homelab hostnames (`home.arpa` per RFC 8375) and upstream resolution.
+- **DNS (dnsmasq)**: Local caching DNS resolver listening on loopback, WAN, and internal bridge interfaces, providing local resolution for homelab hostnames (`*.homelab`) and upstream resolution.
 - **Fedora Cloud Virtual Machines**: Downloads the official `Fedora Cloud Base` qcow2 image, generates a Cloud-Init Gold Template (`VMID 9000`), and clones two Fedora VMs (`10.10.10.11`, `10.10.10.12`) with injected SSH keys and QEMU Guest Agent.
 - **Fedora Baseline & Disk Expansion**: Expands root partition and filesystem (BTRFS/XFS/EXT4) to 100% of maximum virtual disk capacity online, removes bloatware (`ModemManager`, `Cockpit`, `Plymouth`, `PackageKit`, `abrt`), disables delay-inducing services (`NetworkManager-wait-online`), and tunes DNF (`fastestmirror`, parallel downloads).
 
@@ -63,7 +63,8 @@ homelab_infrastructure/
 │   ├── 04_caddy.yml               # Caddy reverse proxy setup
 │   ├── 05_dns.yml                 # Local DNS server setup
 │   ├── 06_fedora_vms.yml          # Fedora template and VM provisioning
-│   └── 07_fedora_baseline.yml     # Fedora VM service cleanup and DNF tuning
+│   ├── 07_fedora_baseline.yml     # Fedora VM service cleanup and DNF tuning
+│   └── destroy_fedora_vms.yml     # Destroy provisioned Fedora VMs (optional template/image purge)
 ├── roles/
 │   ├── proxmox_bootstrap/
 │   ├── proxmox_network/
@@ -130,4 +131,13 @@ ansible-playbook -i inventory/hosts.yml playbooks/site.yml -t vms
 
 # Only Fedora VMs baseline cleanup & optimization
 ansible-playbook -i inventory/hosts.yml playbooks/site.yml -t baseline
+```
+
+**Destroy provisioned Fedora VMs:**
+```bash
+# Destroy VMs defined in fedora_vms (keeps template & cached image)
+ansible-playbook -i inventory/hosts.yml playbooks/destroy_fedora_vms.yml
+
+# Also destroy template VM (9000) and cached qcow2 image
+ansible-playbook -i inventory/hosts.yml playbooks/destroy_fedora_vms.yml -e fedora_destroy_template=true -e fedora_destroy_image=true
 ```

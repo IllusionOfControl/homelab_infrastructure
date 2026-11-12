@@ -1,0 +1,63 @@
+---
+- name: Destroy Provisioned Fedora Cloud Virtual Machines on Proxmox
+  hosts: proxmox
+  become: false
+  gather_facts: false
+  vars:
+    fedora_destroy_template: false
+    fedora_destroy_image: false
+  tasks:
+    - name: Check status of configured Fedora VMs
+      ansible.builtin.command: "qm status {{ item.vmid }}"
+      loop: "{{ fedora_vms | default([]) }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+      register: fedora_vm_status_checks
+      failed_when: false
+      changed_when: false
+
+    - name: Stop running Fedora VMs before removal
+      ansible.builtin.command: "qm stop {{ item.item.vmid }} --overrule-shutdown 1"
+      loop: "{{ fedora_vm_status_checks.results }}"
+      loop_control:
+        label: "{{ item.item.name }} ({{ item.item.vmid }})"
+      when:
+        - item.rc == 0
+        - "'status: stopped' not in item.stdout"
+      changed_when: true
+
+    - name: Destroy existing Fedora VMs and purge volumes
+      ansible.builtin.command: "qm destroy {{ item.item.vmid }} --purge 1 --destroy-unreferenced-disks 1"
+      loop: "{{ fedora_vm_status_checks.results }}"
+      loop_control:
+        label: "{{ item.item.name }} ({{ item.item.vmid }})"
+      when: item.rc == 0
+      changed_when: true
+
+    - name: Check if Fedora Cloud template VM exists
+      ansible.builtin.command: "qm status {{ fedora_template_vmid }}"
+      register: fedora_template_status_check
+      failed_when: false
+      changed_when: false
+      when: fedora_destroy_template | bool
+
+    - name: Stop Fedora Cloud template VM if running
+      ansible.builtin.command: "qm stop {{ fedora_template_vmid }} --overrule-shutdown 1"
+      when:
+        - fedora_destroy_template | bool
+        - fedora_template_status_check.rc == 0
+        - "'status: stopped' not in fedora_template_status_check.stdout"
+      changed_when: true
+
+    - name: Destroy Fedora Cloud template VM and purge volumes
+      ansible.builtin.command: "qm destroy {{ fedora_template_vmid }} --purge 1 --destroy-unreferenced-disks 1"
+      when:
+        - fedora_destroy_template | bool
+        - fedora_template_status_check.rc == 0
+      changed_when: true
+
+    - name: Remove cached Fedora Cloud image from Proxmox ISO storage
+      ansible.builtin.file:
+        path: "/var/lib/vz/template/iso/{{ fedora_cloud_image_filename }}"
+        state: absent
+      when: fedora_destroy_image | bool

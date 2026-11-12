@@ -2,7 +2,7 @@
   # Global Caddy Settings
   email {{ caddy_admin_email }}
   {% if caddy_sites | selectattr('tls', 'defined') | selectattr('tls', 'equalto', 'internal') | list | length > 0 %}
-  # Automatic internal CA (self-signed TLS certificates for *.home.arpa )
+  # Automatic internal CA (self-signed TLS certificates for *.homelab)
   local_certs
   {% endif %}
 }

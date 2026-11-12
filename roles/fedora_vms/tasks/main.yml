@@ -32,6 +32,7 @@
         --memory 2048
         --cores 2
         --cpu host
+        --ostype l26
         --net0 virtio,bridge={{ proxmox_network_bridge }}
       changed_when: true
 
@@ -49,24 +50,21 @@
         --scsi0 {{ proxmox_storage_vms }}:vm-{{ fedora_template_vmid }}-disk-0,discard=on,ssd=1
       changed_when: true
 
-    - name: Set boot drive to scsi0
-      ansible.builtin.command: >
-        qm set {{ fedora_template_vmid }}
-        --boot c
-        --bootdisk scsi0
-      changed_when: true
-
     - name: Attach Cloud-Init drive
       ansible.builtin.command: >
         qm set {{ fedora_template_vmid }}
         --ide2 {{ proxmox_storage_vms }}:cloudinit
       changed_when: true
 
+    - name: Set boot drive order to scsi0
+      ansible.builtin.command: >
+        qm set {{ fedora_template_vmid }}
+        --boot order=scsi0
+      changed_when: true
+
     - name: Enable QEMU Guest Agent and serial console
       ansible.builtin.command: >
         qm set {{ fedora_template_vmid }}
-        --serial0 socket
-        --vga serial0
         --agent enabled=1
       changed_when: true
 

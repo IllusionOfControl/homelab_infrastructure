@@ -2,11 +2,12 @@
 # ============================================================
 # General Homelab Settings
 # ============================================================
-homelab_domain: "homelab.arpa"
+homelab_domain: "homelab"
 homelab_timezone: "UTC"
 
 # Public SSH key for injection into Proxmox and provisioned VMs
-homelab_ssh_public_key: "{{ lookup('file', '~/.ssh/id_ed25519.pub', errors='ignore') | default(lookup('file', '~/.ssh/id_rsa.pub', errors='ignore'), true) }}"
+ansible_ssh_private_key_file: "~/.ssh/id_homelab"
+homelab_ssh_public_key: "{{ lookup('file', '~/.ssh/id_homelab.pub', errors='ignore') }}"
 
 # ============================================================
 # Network Architecture (WAN -> Proxmox -> VMs)
@@ -105,8 +106,8 @@ dns_records:
 # ============================================================
 fedora_template_vmid: 9000
 fedora_template_name: "fedora-cloud-template"
-fedora_cloud_image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/45/Server/x86_64/images/Fedora-Server-Guest-Generic-45-1.4.x86_64.qcow2"
-fedora_cloud_image_filename: "fedora-cloud-server-45.qcow2"
+fedora_cloud_image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/45/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-45-1.4.x86_64.qcow2"
+fedora_cloud_image_filename: "fedora-cloud-base-45.qcow2"
 
 fedora_default_user: "devops"
 fedora_default_password: "" # If empty, access is key-only via homelab_ssh_public_key
@@ -117,7 +118,7 @@ fedora_vms:
     name: "fedora-vm-01"
     cores: 2
     sockets: 1
-    memory: 4096
+    memory: 2048
     disk_size: "20G"
     ip: "10.10.10.11/24"
     gateway: "10.10.10.1"
@@ -127,7 +128,7 @@ fedora_vms:
     name: "fedora-vm-02"
     cores: 2
     sockets: 1
-    memory: 4096
+    memory: 2048
     disk_size: "20G"
     ip: "10.10.10.12/24"
     gateway: "10.10.10.1"
@@ -137,7 +138,7 @@ fedora_vms:
     name: "fedora-vm-03"
     cores: 2
     sockets: 1
-    memory: 4096
+    memory: 2048
     disk_size: "20G"
     ip: "10.10.10.13/24"
     gateway: "10.10.10.1"
@@ -147,7 +148,7 @@ fedora_vms:
     name: "fedora-vm-04"
     cores: 2
     sockets: 1
-    memory: 4096
+    memory: 2048
     disk_size: "20G"
     ip: "10.10.10.14/24"
     gateway: "10.10.10.1"

@@ -9,7 +9,7 @@ Primary functional areas:
 - **ZeroTier VPN**: Automated deployment of ZeroTier One daemon and network joining for secure remote administration.
 - **Custom Error Placeholders (tarampampam/error-pages)**: Standalone HTTP daemon serving styled, responsive placeholder pages (502/503/504) whenever backend VMs or applications are offline or unreachable.
 - **Caddy Reverse Proxy**: Automatic internal TLS certificate management (`local_certs` / `tls internal`), routing requests to Proxmox and VM services, and proxying backend connection errors to `tarampampam/error-pages`.
-- **Local DNS (dnsmasq)**: Local authoritative and caching DNS resolver bound to local and internal interfaces, serving RFC 8375 (`home.arpa`) records with upstream forwarding.
+- **Local DNS (dnsmasq)**: Local authoritative and caching DNS resolver bound to local and internal interfaces, serving `.homelab` local records with upstream forwarding.
 - **Fedora Cloud Virtual Machines**: Automated download of Fedora Cloud Base images, generation of Cloud-Init gold templates, and provisioning of Fedora VMs with customized CPU, RAM, disk, networking, and SSH keys.
 - **Fedora Baseline & Disk Expansion**: Automated online expansion of root partition and filesystem (BTRFS/XFS/EXT4) to 100% of underlying virtual disk capacity, elimination of redundant background services (`ModemManager`, `Cockpit`, `Plymouth`, `PackageKit`), and DNF package manager optimization.
 
@@ -78,7 +78,8 @@ homelab_infrastructure/
 │   ├── 04_caddy.yml               # Caddy reverse proxy & error-pages placeholder service
 │   ├── 05_dns.yml                 # dnsmasq local resolver
 │   ├── 06_fedora_vms.yml          # Fedora template creation and VM provisioning
-│   └── 07_fedora_baseline.yml     # Fedora VM service cleanup, DNF tuning & disk auto-expansion
+│   ├── 07_fedora_baseline.yml     # Fedora VM service cleanup, DNF tuning & disk auto-expansion
+│   └── destroy_fedora_vms.yml     # Destroy provisioned Fedora VMs (optional template/image purge)
 ├── roles/
 │   ├── proxmox_bootstrap/         # Package mirrors, pve-no-subscription, nag removal
 │   ├── proxmox_network/           # vmbr1 bridge, sysctl ip_forward, iptables masquerade
